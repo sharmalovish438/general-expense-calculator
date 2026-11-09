@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My College Expense Tracker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#f2f5fb;color:#1e293b;font-family:Arial,sans-serif}
+main{max-width:1500px;margin:auto}
+h1{text-align:center;color:#174ea6}
+.panel,.card{background:white;padding:16px;border-radius:12px;margin:14px 0;box-shadow:0 2px 8px #dce3ee}
+.grid,.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}
+label{display:block;font-size:13px;font-weight:bold;margin-bottom:6px}
+input,button{width:100%;padding:9px;border:1px solid #ccd3df;border-radius:7px;font:inherit}
+button{background:#174ea6;color:white;border:0;cursor:pointer;margin-top:5px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions button{width:auto;padding:10px}
+.card p{font-size:13px;color:#64748b;margin:0 0 9px}
+.card h2{font-size:20px;color:#174ea6;margin:0;overflow-wrap:anywhere}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1450px}
+th,td{padding:8px;border:1px solid #ddd;text-align:center;font-size:12px}
+th{background:#174ea6;color:white}
+td input{min-width:80px;padding:8px}
+td .reason{min-width:130px}
+td .day-budget{min-width:95px;font-weight:bold;color:#174ea6}
+.good{color:#15803d!important;font-weight:bold}
+.bad{color:#b91c1c!important;font-weight:bold}
+.note{color:#64748b;font-size:13px;line-height:1.6}
+tfoot th{background:#dce9ff;color:#174ea6}
+@media(max-width:600px){body{padding:8px}.panel{padding:10px}h1{font-size:23px}}
+@media print{.no-print{display:none!important}body{background:white}.panel,.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>My College Expense Tracker</h1>
+
+<section class="panel">
+<h3>Monthly Budget Settings</h3>
+<div class="grid">
+<div>
+<label for="month">Select Month</label>
+<input type="month" id="month">
+</div>
+<div>
+<label for="monthlyMoney">Total Money Received This Month (₹)</label>
+<input type="number" id="monthlyMoney" min="0" step=".01" value="6000">
+</div>
+<div>
+<label for="defaultBudget">Default Daily Budget (₹)</label>
+<input type="number" id="defaultBudget" min="0" step=".01" value="200">
+</div>
+<div>
+<label for="startingCash">Starting Cash (₹)</label>
+<input type="number" id="startingCash" min="0" step=".01" value="0">
+</div>
+</div>
+<button class="no-print" onclick="applySettings()">Apply / Load Month</button>
+<p class="note">
+Set your default daily budget. Changing it automatically updates the budget for every day of the selected month. You can also edit the budget for an individual day. Savings and overspending are calculated daily. There is no carryover.
+</p>
+</section>
+
+<section class="cards">
+<div class="card"><p>Monthly Money Received</p><h2 id="received">₹0</h2></div>
+<div class="card"><p>Total Monthly Expenses</p><h2 id="expenses">₹0</h2></div>
+<div class="card"><p>Monthly Saving / Extra</p><h2 id="monthlySaving">₹0</h2></div>
+<div class="card"><p>Total Money Given</p><h2 id="givenTotal">₹0</h2></div>
+<div class="card"><p>Total Money Returned</p><h2 id="returnedTotal">₹0</h2></div>
+<div class="card"><p>Estimated Cash Balance</p><h2 id="cash">₹0</h2></div>
+</section>
+
+<section class="panel">
+<h3>Daily Expense Record</h3>
+<div class="actions no-print">
+<button onclick="saveAll()">Save Records</button>
+<button onclick="downloadCSV()">Download Monthly CSV</button>
+<button onclick="window.print()">Print Report</button>
+</div>
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Daily Budget ₹ (Editable)</th>
+<th>Travel ₹</th>
+<th>Parking ₹</th>
+<th>Petrol ₹</th>
+<th>Food ₹</th>
+<th>Extra ₹</th>
+<th>Reason for Extra Expense</th>
+<th>Total Expense ₹</th>
+<th>Money Given ₹</th>
+<th>Money Returned ₹</th>
+<th>Saving / Extra for Day ₹</th>
+</tr>
+</thead>
+<tbody id="dailyRows"></tbody>
+<tfoot>
+<tr>
+<th>MONTHLY TOTAL</th>
+<th id="budgetTotal">₹0</th>
+<th id="travelTotal">₹0</th>
+<th id="parkingTotal">₹0</th>
+<th id="petrolTotal">₹0</th>
+<th id="foodTotal">₹0</th>
+<th id="extraTotal">₹0</th>
+<th>—</th>
+<th id="expenseTotal">₹0</th>
+<th id="givenFooter">₹0</th>
+<th id="returnedFooter">₹0</th>
+<th id="savingFooter">₹0</th>
+</tr>
+</tfoot>
+</table>
+</div>
+<p id="status" class="note"></p>
+</section>
+
+<section class="panel">
+<h3>Monthly Final Record</h3>
+<div class="grid">
+<div><label>Monthly Money Received</label><h3 id="finalReceived">₹0</h3></div>
+<div><label>Total Expenses</label><h3 id="finalExpenses">₹0</h3></div>
+<div><label>Monthly Saving / Extra</label><h3 id="finalSaving">₹0</h3></div>
+<div><label>Net Cash Balance</label><h3 id="finalCash">₹0</h3></div>
+</div>
+<p class="note">
+Monthly saving / extra = monthly money received minus total expenses.
+Net cash balance also includes starting cash, money given and money returned.
+</p>
+</section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const now = new Date();
+
+const dateString = d => d.getFullYear() + "-" +
+String(d.getMonth()+1).padStart(2,"0") + "-" +
+String(d.getDate()).padStart(2,"0");
+
+const currentMonth = dateString(now).slice(0,7);
+const KEY = "collegeExpenseSimple_v1";
+
+const num = v => {
+const n = Number(v);
+return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+const fmt = n => "₹" + Number(n || 0).toLocaleString("en-IN",{
+minimumFractionDigits:2,
+maximumFractionDigits:2
+});
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+
+let db = {months:{}};
+
+try{
+const old = JSON.parse(localStorage.getItem(KEY) || "null");
+if(old && old.months) db = old;
+}catch(e){}
+
+let activeMonth = currentMonth;
+$("month").value = currentMonth;
+
+function data(m=activeMonth){
+if(!db.months[m]){
+db.months[m]={money:6000,limit:200,start:0,days:{}};
+}
+const d=db.months[m];
+if(!d.days)d.days={};
+if(d.limit===undefined)d.limit=200;
+return d;
+}
+
+function persist(){
+try{
+localStorage.setItem(KEY,JSON.stringify(db));
+return true;
+}catch(e){
+alert("Unable to save records. Please download a CSV backup.");
+return false;
+}
+}
+
+function daysInMonth(m){
+const [y,mo]=m.split("-").map(Number);
+return new Date(y,mo,0).getDate();
+}
+
+function applySettings(){
+if(!$("month").value){
+alert("Please select a month.");
+return;
+}
+
+readRows();
+activeMonth=$("month").value;
+const d=data();
+
+d.money=num($("monthlyMoney").value);
+d.limit=num($("defaultBudget").value);
+d.start=num($("startingCash").value);
+
+for(let i=1;i<=daysInMonth(activeMonth);i++){
+const date=activeMonth+"-"+String(i).padStart(2,"0");
+if(!d.days[date])d.days[date]={};
+d.days[date].budget=d.limit;
+}
+
+persist();
+render();
+}
+
+function render(){
+const d=data();
+
+$("monthlyMoney").value=d.money;
+$("defaultBudget").value=d.limit;
+$("startingCash").value=d.start;
+$("dailyRows").innerHTML="";
+
+for(let i=1;i<=daysInMonth(activeMonth);i++){
+const date=activeMonth+"-"+String(i).padStart(2,"0");
+const r=d.days[date]||{};
+const dayBudget=r.budget===undefined?d.limit:num(r.budget);
+const tr=document.createElement("tr");
+tr.dataset.date=date;
+
+tr.innerHTML=`
+<td>${date}</td>
+<td><input type="number" min="0" step=".01" class="day-budget" value="${dayBudget}"></td>
+<td><input type="number" min="0" step=".01" class="bus" value="${num(r.bus)}"></td>
+<td><input type="number" min="0" step=".01" class="parking" value="${num(r.parking)}"></td>
+<td><input type="number" min="0" step=".01" class="petrol" value="${num(r.petrol)}"></td>
+<td><input type="number" min="0" step=".01" class="food" value="${num(r.food)}"></td>
+<td><input type="number" min="0" step=".01" class="extra" value="${num(r.extra)}"></td>
+<td><input type="text" class="reason" value="${esc(r.reason||"")}" placeholder="Optional reason"></td>
+<td class="spent">${fmt(0)}</td>
+<td><input type="number" min="0" step=".01" class="given" value="${num(r.given)}"></td>
+<td><input type="number" min="0" step=".01" class="returned" value="${num(r.returned)}"></td>
+<td class="saving good">${fmt(dayBudget)}</td>
+`;
+
+$("dailyRows").appendChild(tr);
+}
+
+$("dailyRows").querySelectorAll("input").forEach(input=>{
+input.addEventListener("input",()=>{
+readRows();
+calculate();
+updateSummary();
+persist();
+});
+});
+
+calculate();
+updateSummary();
+}
+
+function readRows(){
+const d=data();
+
+document.querySelectorAll("#dailyRows tr").forEach(tr=>{
+const v=c=>tr.querySelector("."+c).value;
+
+d.days[tr.dataset.date]={
+budget:num(v("day-budget")),
+bus:num(v("bus")),
+parking:num(v("parking")),
+petrol:num(v("petrol")),
+food:num(v("food")),
+extra:num(v("extra")),
+reason:v("reason"),
+given:num(v("given")),
+returned:num(v("returned"))
+};
+});
+}
+
+function calculate(){
+let totalExpense=0;
+let totalGiven=0;
+let totalReturned=0;
+let totalBudget=0;
+let totalDailySaving=0;
+
+const totals={bus:0,parking:0,petrol:0,food:0,extra:0};
+
+document.querySelectorAll("#dailyRows tr").forEach(tr=>{
+const v=c=>num(tr.querySelector("."+c).value);
+
+const available=v("day-budget");
+const spent=v("bus")+v("parking")+v("petrol")+v("food")+v("extra");
+const saving=available-spent;
+
+tr.querySelector(".spent").textContent=fmt(spent);
+tr.querySelector(".saving").textContent=
+(saving>0?"+":saving<0?"−":"")+fmt(Math.abs(saving));
+tr.querySelector(".saving").className="saving "+(saving>=0?"good":"bad");
+
+totalBudget+=available;
+totalDailySaving+=saving;
+totalExpense+=spent;
+totalGiven+=v("given");
+totalReturned+=v("returned");
+
+Object.keys(totals).forEach(k=>totals[k]+=v(k));
+});
+
+$("budgetTotal").textContent=fmt(totalBudget);
+$("travelTotal").textContent=fmt(totals.bus);
+$("parkingTotal").textContent=fmt(totals.parking);
+$("petrolTotal").textContent=fmt(totals.petrol);
+$("foodTotal").textContent=fmt(totals.food);
+$("extraTotal").textContent=fmt(totals.extra);
+$("expenseTotal").textContent=fmt(totalExpense);
+$("givenFooter").textContent=fmt(totalGiven);
+$("returnedFooter").textContent=fmt(totalReturned);
+$("savingFooter").textContent=
+(totalDailySaving>=0?"+":"−")+fmt(Math.abs(totalDailySaving));
+
+$("status").textContent=
+"Default daily budget: "+fmt(data().limit)+
+" | Total daily budgets: "+fmt(totalBudget)+
+" | Total monthly expenses: "+fmt(totalExpense)+
+" | Total daily saving / overspending: "+
+(totalDailySaving>=0?"+":"−")+fmt(Math.abs(totalDailySaving));
+}
+
+function updateSummary(){
+const d=data();
+let expenses=0,given=0,returned=0;
+
+Object.entries(d.days).forEach(([date,r])=>{
+if(!date.startsWith(activeMonth))return;
+expenses+=num(r.bus)+num(r.parking)+num(r.petrol)+num(r.food)+num(r.extra);
+given+=num(r.given);
+returned+=num(r.returned);
+});
+
+const monthlySaving=d.money-expenses;
+const cash=d.start+d.money+returned-expenses-given;
+
+$("received").textContent=fmt(d.money);
+$("expenses").textContent=fmt(expenses);
+$("monthlySaving").textContent=fmt(monthlySaving);
+$("monthlySaving").className=monthlySaving>=0?"good":"bad";
+
+$("givenTotal").textContent=fmt(given);
+$("returnedTotal").textContent=fmt(returned);
+$("cash").textContent=fmt(cash);
+$("cash").className=cash>=0?"good":"bad";
+
+$("finalReceived").textContent=fmt(d.money);
+$("finalExpenses").textContent=fmt(expenses);
+$("finalSaving").textContent=fmt(monthlySaving);
+$("finalSaving").className=monthlySaving>=0?"good":"bad";
+$("finalCash").textContent=fmt(cash);
+$("finalCash").className=cash>=0?"good":"bad";
+}
+
+function saveAll(){
+readRows();
+calculate();
+updateSummary();
+if(persist())alert("Records saved successfully.");
+}
+
+function downloadCSV(){
+readRows();
+persist();
+
+const d=data();
+const rows=[[
+"Date","Daily Budget","Travel","Parking","Petrol","Food","Extra",
+"Reason","Total Expense","Money Given","Money Returned",
+"Saving / Extra for Day"
+]];
+
+let totalExpense=0,totalBudget=0,totalDailySaving=0;
+
+document.querySelectorAll("#dailyRows tr").forEach(tr=>{
+const v=c=>num(tr.querySelector("."+c).value);
+const budget=v("day-budget");
+const spent=v("bus")+v("parking")+v("petrol")+v("food")+v("extra");
+const saving=budget-spent;
+
+totalExpense+=spent;
+totalBudget+=budget;
+totalDailySaving+=saving;
+
+rows.push([
+tr.dataset.date,budget,v("bus"),v("parking"),v("petrol"),
+v("food"),v("extra"),tr.querySelector(".reason").value,spent,
+v("given"),v("returned"),saving
+]);
+});
+
+let given=0,returned=0;
+Object.entries(d.days).forEach(([date,r])=>{
+if(!date.startsWith(activeMonth))return;
+given+=num(r.given);
+returned+=num(r.returned);
+});
+
+rows.push([]);
+rows.push(["MONTHLY MONEY RECEIVED",d.money]);
+rows.push(["TOTAL DAILY BUDGETS",totalBudget]);
+rows.push(["TOTAL MONTHLY EXPENSES",totalExpense]);
+rows.push(["MONTHLY SAVING / EXTRA",d.money-totalExpense]);
+rows.push(["TOTAL DAILY BUDGET SAVING / OVERSPENDING",totalDailySaving]);
+rows.push(["TOTAL MONEY GIVEN",given]);
+rows.push(["TOTAL MONEY RETURNED",returned]);
+rows.push(["ESTIMATED CASH BALANCE",d.start+d.money+returned-totalExpense-given]);
+
+const csv=rows.map(row=>row.map(v=>
+'"'+String(v??"").replace(/"/g,'""')+'"'
+).join(",")).join("\r\n");
+
+const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="College_Expenses_"+activeMonth+".csv";
+a.click();
+setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+$("month").addEventListener("change",()=>{
+if(!$("month").value)return;
+readRows();
+activeMonth=$("month").value;
+render();
+});
+
+$("monthlyMoney").addEventListener("change",()=>{
+data().money=num($("monthlyMoney").value);
+persist();
+updateSummary();
+calculate();
+});
+
+$("startingCash").addEventListener("change",()=>{
+data().start=num($("startingCash").value);
+persist();
+updateSummary();
+});
+
+$("defaultBudget").addEventListener("input",()=>{
+if(!activeMonth)return;
+
+const d=data();
+d.limit=num($("defaultBudget").value);
+
+for(let i=1;i<=daysInMonth(activeMonth);i++){
+const date=activeMonth+"-"+String(i).padStart(2,"0");
+if(!d.days[date])d.days[date]={};
+d.days[date].budget=d.limit;
+}
+
+document.querySelectorAll("#dailyRows tr").forEach(tr=>{
+tr.querySelector(".day-budget").value=d.limit;
+});
+
+calculate();
+updateSummary();
+persist();
+});
+
+const initial=data();
+$("monthlyMoney").value=initial.money;
+$("defaultBudget").value=initial.limit;
+$("startingCash").value=initial.start;
+render();
+</script>
+</body>
+</html>
